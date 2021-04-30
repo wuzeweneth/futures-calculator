@@ -75,6 +75,8 @@ def clacPAMgn(buyPrice, buyCount, lever, posSide, lastMarkPrice):
     print("币本位爆仓价格计算")
     print("购入价格: %f, 购入张数: %d, 杠杆倍数: %d, 持仓方向: %s, 最新标记价格: %f" %
           (buyPrice, buyCount, lever, posSide, lastMarkPrice))
+    # 面值
+    onePrice = 100
     # 档位
     level = 0
     # 档位维持保证金率
@@ -92,134 +94,88 @@ def clacPAMgn(buyPrice, buyCount, lever, posSide, lastMarkPrice):
     # 平仓手续费率 (爆仓时按照吃单计算)
     clossFee = takerFee
     # 固定保证金 = 面值 * 张数 / (购入价格 * 杠杆倍数)
-    fixMgn = 100 * buyCount / (buyPrice * lever)
-    print("固定保证金为：%fBTC" % (fixMgn))
+    fixMgn = onePrice * buyCount / (buyPrice * lever)
+    print("固定保证金为：%fBTC(%fUSDT)" % (fixMgn, fixMgn*buyPrice))
     # 当前所需维持保证金率 + 平仓手续费率
-    keyRate = levelMgnRate + clossFee
+    keyRate = (levelMgnRate + clossFee) / 100
     # 计算开多的未实现盈亏
     # 未实现盈亏
     upl = 0
-    if posSide == 'long':
+    if posSide == "long":
         # 未实现盈亏 (买入开多) = 面值 * 张数 / 开仓均价 - 面值 * 张数 / 最新标记价格
-        upl = 100 * buyCount / buyPrice - 100 * buyCount / lastMarkPrice
+        upl = onePrice * buyCount / buyPrice - onePrice * buyCount / lastMarkPrice
     # 计算开空的未实现盈亏
-    if posSide == 'short':
+    if posSide == "short":
         # 未实现盈亏 (卖出开空) = 面值 * 张数 / 最新标记价格 - 面值 * 张数 / 开仓均价
-        upl = 100 * buyCount / lastMarkPrice - 100 * buyCount / buyPrice
+        upl = onePrice * buyCount / lastMarkPrice - onePrice * buyCount / buyPrice
     # 保证金率 = (固定保证金 + 未实现盈亏) / (面值 * 张数 / 最新标记价格)
-    isolatedMgn = (fixMgn + upl) / (100 * buyCount / lastMarkPrice) * 100
-    print('未实现盈亏为：%fBTC' % (upl))
-    print('保证金率为: %f%%' % (isolatedMgn))
+    isolatedMgn = (fixMgn + upl) / (onePrice * buyCount / lastMarkPrice) * 100
+    print("未实现盈亏为：%fBTC(%FUDST)" % (upl, upl*lastMarkPrice))
+    print("保证金率为: %f%%" % (isolatedMgn))
     print("-----------------------------------------")
     # 当保证金率小于等于用户当前所需维持保证金率 + 平仓手续费率时，即触发爆仓
-    if posSide == 'long':
-        # (当前所需维持保证金率 + 平仓手续费率)a = (固定保证金b + 面值c * 张数d / 开仓均价e - 面值c * 张数d / 最新标记价格f) / (面值c * 张数d / 最新标记价格f) * 100
-        # a = (b + c * d / e - c * d / f) / (c * d / f) * 100
+    if posSide == "long":
+        # (当前所需维持保证金率 + 平仓手续费率)a = (固定保证金b + 面值c * 张数d / 开仓均价e - 面值c * 张数d / 最新标记价格f) / (面值c * 张数d / 最新标记价格f)
+        # a = (b + c * d / e - c * d / f) / (c * d / f)
         # 求爆仓的变量f：最新标记价格
-        # f = (a * c * d + 100 * c * d) / (100 * (b + c * d / e))
+        # f = (a * c * d + c * d) / (b + c * d / e)
         # 最新标记价格(爆仓) = ((当前所需维持保证金率 + 平仓手续费率) * 面值 * 张数 + 面值 * 张数) / (固定保证金 + 面值 * 张数 / 开仓均价)
-        explMarkPrice = (keyRate * 100 * buyCount + 100 * 100 *
-                         buyCount) / (100 * (fixMgn + 100 * buyCount / buyPrice))
+        explMarkPrice = (keyRate * onePrice * buyCount + onePrice *
+                         buyCount) / (fixMgn + onePrice * buyCount / buyPrice)
         # 未实现盈亏 (买入开多) = 面值 * 张数 / 开仓均价 - 面值 * 张数 / 最新标记价格
-        lastUpl = 100 * buyCount / buyPrice - 100 * buyCount / explMarkPrice
-        expisolatedMgn = (fixMgn + lastUpl) / (100 * buyCount / explMarkPrice) * 100
-        print('当最新标记价格等于或小于: %f时, 未实现盈亏为：%fBTC' %
-              (explMarkPrice, lastUpl))
-        print('保证金率为: %f%%, 等于或小于当前档位维持保证金率+平仓手续费率%f%%触发爆仓' %
-              (expisolatedMgn, keyRate))
+        lastUpl = onePrice * buyCount / buyPrice - onePrice * buyCount / explMarkPrice
+        expisolatedMgn = (fixMgn + lastUpl) / (onePrice *
+                                               buyCount / explMarkPrice)
+        print("当标记价格等于或小于: %f时" % (explMarkPrice))
+        print("未实现盈亏为：%fBTC(%fUSDT)" % (lastUpl, lastUpl*explMarkPrice))
+        closeFeeResult = onePrice * buyCount / explMarkPrice * clossFee / 100
+        print("平仓手续费为：%fBTC(%fUSDT)" %
+              (closeFeeResult, closeFeeResult*explMarkPrice))
+        levelMgnResult = (onePrice * buyCount /
+                          explMarkPrice) * (levelMgnRate / 100)
+        print("档位最低维持保证金为：%fBTC(%fUSDT)" %
+              (levelMgnResult, levelMgnResult*explMarkPrice))
+        print("原先固定保证金为: %fBTC(%fUSDT)" % (fixMgn, fixMgn*explMarkPrice))
+        tempResult = fixMgn + lastUpl - closeFeeResult
+        print("当前保证金(加上未实现盈亏和减去平仓手续费)为：%fBTC(%fUSDT)" %
+              (tempResult, tempResult*explMarkPrice))
+        print("保证金率为: %f%%, 等于或小于当前档位维持保证金率+平仓手续费率%f%%触发爆仓" %
+              (expisolatedMgn*100, keyRate*100))
     # 计算开空的未实现盈亏
-    if posSide == 'short':
-        # (当前所需维持保证金率 + 平仓手续费率)a = (固定保证金b + 面值c * 张数d / 最新标记价格e - 面值c * 张数d / 开仓均价f) / (面值c * 张数d / 最新标记价格e) * 100
-        # a = (b + c * d / e - c * d / f) / (c * d / e) * 100
+    if posSide == "short":
+        # (当前所需维持保证金率 + 平仓手续费率)a = (固定保证金b + 面值c * 张数d / 最新标记价格e - 面值c * 张数d / 开仓均价f) / (面值c * 张数d / 最新标记价格e)
+        # a = (b + c * d / e - c * d / f) / (c * d / e)
         # 求爆仓的变量e：最新标记价格
-        # e = (a * c * d - 100 * c * d) / (100 * (b - c * d / f))
+        # e = (a * c * d - c * d) / (b - c * d / f)
         # 最新标记价格(爆仓) = ((当前所需维持保证金率 + 平仓手续费率) * 面值 * 张数 - 面值 * 张数) / (固定保证金 - 面值 * 张数 / 开仓均价)
-        explMarkPrice = (keyRate * 100 * buyCount - 100 * 100 *
-                         buyCount) / (100 * (fixMgn - 100 * buyCount / buyPrice))
+        explMarkPrice = (keyRate * onePrice * buyCount - onePrice *
+                         buyCount) / (fixMgn - onePrice * buyCount / buyPrice)
         # 未实现盈亏 (卖出开空) = 面值 * 张数 / 最新标记价格 - 面值 * 张数 / 开仓均价
-        lastUpl = 100 * buyCount / explMarkPrice - 100 * buyCount / buyPrice
-        expisolatedMgn = (fixMgn + lastUpl) / (100 * buyCount / explMarkPrice) * 100
-        print('当标记价格等于或大于: %f时, 未实现盈亏为：%fBTC' %
-              (explMarkPrice, lastUpl))
-        print('保证金率为: %f%%, 等于或小于档位维持保证金率+平仓手续费率%f%%触发爆仓' %
-              ( expisolatedMgn, keyRate))
+        lastUpl = onePrice * buyCount / explMarkPrice - onePrice * buyCount / buyPrice
+        expisolatedMgn = (fixMgn + lastUpl) / (onePrice *
+                                               buyCount / explMarkPrice)
+        print("当标记价格等于或大于: %f时" % (explMarkPrice))
+        print("未实现盈亏为：%fBTC(%fUSDT)" % (lastUpl, lastUpl*explMarkPrice))
+        closeFeeResult = onePrice * buyCount / explMarkPrice * clossFee / 100
+        print("平仓手续费为：%fBTC(%fUSDT)" %
+              (closeFeeResult, closeFeeResult*explMarkPrice))
+        levelMgnResult = (onePrice * buyCount /
+                          explMarkPrice) * (levelMgnRate / 100)
+        print("档位最低维持保证金为：%fBTC(%fUSDT)" %
+              (levelMgnResult, levelMgnResult*explMarkPrice))
+        print("原先固定保证金为: %fBTC(%fUSDT)" % (fixMgn, fixMgn*explMarkPrice))
+        tempResult = fixMgn + lastUpl - closeFeeResult
+        print("当前保证金(加上未实现盈亏和减去平仓手续费)为：%fBTC(%fUSDT)" %
+              (tempResult, tempResult*explMarkPrice))
+        print("保证金率为: %f%%, 等于或小于档位维持保证金率+平仓手续费率%f%%触发爆仓" %
+              (expisolatedMgn*100, keyRate*100))
     print("-----------------------------------------")
 
-# 美元本位所需保证金：(购入价格,购入张数,杠杆倍数,持仓方向,最新标记价格)
+# USDT本位所需保证金：(购入价格,购入张数,杠杆倍数,持仓方向,最新标记价格)
+
+
 def clacBSMgn(buyPrice, buyCount, lever, posSide, lastMarkPrice):
-    print("=========================================")
-    print("USDT本位爆仓价格计算")
-    print("购入价格: %f, 购入张数: %d, 杠杆倍数: %d, 持仓方向: %s, 最新标记价格: %f" %
-          (buyPrice, buyCount, lever, posSide, lastMarkPrice))
-    # 档位
-    level = 0
-    # 档位维持保证金率
-    levelMgnRate = 0
-    # 最低初始保证金率
-    minLevelMgnRate = 0
-    for item in usdtFpt:
-        if buyCount >= item[1] and buyCount <= item[2]:
-            level = item[0]
-            levelMgnRate = item[3]
-            minLevelMgnRate = item[4]
-    print("当前档位: %d, 档位维持保证金率: %f%%, 最低初始保证金率: %f%%" %
-          (level, levelMgnRate, minLevelMgnRate))
-    print("=========================================")
-    # 平仓手续费率 (爆仓时按照吃单计算)
-    clossFee = takerFee
-    # 固定保证金 = 面值 * 张数 / (购入价格 * 杠杆倍数)
-    fixMgn = 100 * buyCount / (buyPrice * lever)
-    print("固定保证金为：%fBTC" % (fixMgn))
-    # 当前所需维持保证金率 + 平仓手续费率
-    keyRate = levelMgnRate + clossFee
-    # 计算开多的未实现盈亏
-    # 未实现盈亏
-    upl = 0
-    if posSide == 'long':
-        # 未实现盈亏 (买入开多) = 面值 * 张数 / 开仓均价 - 面值 * 张数 / 最新标记价格
-        upl = 100 * buyCount / buyPrice - 100 * buyCount / lastMarkPrice
-    # 计算开空的未实现盈亏
-    if posSide == 'short':
-        # 未实现盈亏 (卖出开空) = 面值 * 张数 / 最新标记价格 - 面值 * 张数 / 开仓均价
-        upl = 100 * buyCount / lastMarkPrice - 100 * buyCount / buyPrice
-    # 保证金率 = (固定保证金 + 未实现盈亏) / (面值 * 张数 / 最新标记价格)
-    isolatedMgn = (fixMgn + upl) / (100 * buyCount / lastMarkPrice) * 100
-    print('未实现盈亏为：%fBTC' % (upl))
-    print('保证金率为: %f%%' % (isolatedMgn))
-    print("-----------------------------------------")
-    # 当保证金率小于等于用户当前所需维持保证金率 + 平仓手续费率时，即触发爆仓
-    if posSide == 'long':
-        # (当前所需维持保证金率 + 平仓手续费率)a = (固定保证金b + 面值c * 张数d / 开仓均价e - 面值c * 张数d / 最新标记价格f) / (面值c * 张数d / 最新标记价格f) * 100
-        # a = (b + c * d / e - c * d / f) / (c * d / f) * 100
-        # 求爆仓的变量f：最新标记价格
-        # f = (a * c * d + 100 * c * d) / (100 * (b + c * d / e))
-        # 最新标记价格(爆仓) = ((当前所需维持保证金率 + 平仓手续费率) * 面值 * 张数 + 面值 * 张数) / (固定保证金 + 面值 * 张数 / 开仓均价)
-        explMarkPrice = (keyRate * 100 * buyCount + 100 * 100 *
-                         buyCount) / (100 * (fixMgn + 100 * buyCount / buyPrice))
-        # 未实现盈亏 (买入开多) = 面值 * 张数 / 开仓均价 - 面值 * 张数 / 最新标记价格
-        lastUpl = 100 * buyCount / buyPrice - 100 * buyCount / explMarkPrice
-        expisolatedMgn = (fixMgn + lastUpl) / (100 * buyCount / explMarkPrice) * 100
-        print('当最新标记价格等于或小于: %f时, 未实现盈亏为：%fBTC' %
-              (explMarkPrice, lastUpl))
-        print('保证金率为: %f%%, 等于或小于当前档位维持保证金率+平仓手续费率%f%%触发爆仓' %
-              (expisolatedMgn, keyRate))
-    # 计算开空的未实现盈亏
-    if posSide == 'short':
-        # (当前所需维持保证金率 + 平仓手续费率)a = (固定保证金b + 面值c * 张数d / 最新标记价格e - 面值c * 张数d / 开仓均价f) / (面值c * 张数d / 最新标记价格e) * 100
-        # a = (b + c * d / e - c * d / f) / (c * d / e) * 100
-        # 求爆仓的变量e：最新标记价格
-        # e = (a * c * d - 100 * c * d) / (100 * (b - c * d / f))
-        # 最新标记价格(爆仓) = ((当前所需维持保证金率 + 平仓手续费率) * 面值 * 张数 - 面值 * 张数) / (固定保证金 - 面值 * 张数 / 开仓均价)
-        explMarkPrice = (keyRate * 100 * buyCount - 100 * 100 *
-                         buyCount) / (100 * (fixMgn - 100 * buyCount / buyPrice))
-        # 未实现盈亏 (卖出开空) = 面值 * 张数 / 最新标记价格 - 面值 * 张数 / 开仓均价
-        lastUpl = 100 * buyCount / explMarkPrice - 100 * buyCount / buyPrice
-        expisolatedMgn = (fixMgn + lastUpl) / (100 * buyCount / explMarkPrice) * 100
-        print('当标记价格等于或大于: %f时, 未实现盈亏为：%fBTC' %
-              (explMarkPrice, lastUpl))
-        print('保证金率为: %f%%, 等于或小于档位维持保证金率+平仓手续费率%f%%触发爆仓' %
-              ( expisolatedMgn, keyRate))
-    print("-----------------------------------------")
+    return
 
 
-clacPAMgn(10000, 100, 10, 'long', 10000)
+clacPAMgn(10000, 100, 10, "long", 10000)
