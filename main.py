@@ -82,7 +82,7 @@ def clacPAMgn(buyPrice, buyCount, lever, posSide, lastMarkPrice, takerFee):
     clossFee = takerFee
     # 固定保证金 = 面值 * 张数 / (购入价格 * 杠杆倍数)
     fixMgn = onePrice * buyCount / (buyPrice * lever)
-    print("固定保证金为：%fBTC(%fUSDT)" % (fixMgn, fixMgn*buyPrice))
+    print("固定保证金为：%fBTC(%fUSDT)" % (fixMgn, fixMgn*lastMarkPrice))
     # 当前所需维持保证金率 + 平仓手续费率
     keyRate = (levelMgnRate + clossFee) / 100
     # 计算开多的未实现盈亏
@@ -185,7 +185,7 @@ def clacBSMgn(buyPrice, buyCount, lever, posSide, lastMarkPrice, takerFee):
     clossFee = takerFee
     # 固定保证金 = 面值 * 张数 * 开仓价格 / 杠杆倍数
     fixMgn = onePrice * buyCount * buyPrice / lever
-    print("固定保证金为：%fUSDT(%fBTC)" % (fixMgn, fixMgn/buyPrice))
+    print("固定保证金为：%fUSDT(%fBTC)" % (fixMgn, fixMgn/lastMarkPrice))
     # 当前所需维持保证金率 + 平仓手续费率
     keyRate = (levelMgnRate + clossFee) / 100
     # 计算开多的未实现盈亏
